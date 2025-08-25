@@ -15,6 +15,8 @@
   #nameOverlay input{width:100%;padding:10px 12px;font:600 16px system-ui,sans-serif;border:2px solid #fbcfe8;border-radius:10px;outline:none;box-sizing:border-box}#nameOverlay input:focus{border-color:#e11d48}#nameOverlay *{box-sizing:border-box}
   #nameOverlay input:focus{border-color:#e11d48}
   #nameOverlay button{margin-top:14px;width:100%;padding:10px 12px;background:#e11d48;color:#fff;border:none;border-radius:10px;font:700 16px system-ui,sans-serif}
+  #nameOverlay button:disabled{opacity:.55;cursor:not-allowed;filter:grayscale(.2)}
+  #nameOverlay .msg{color:#dc2626;font:600 12px system-ui,sans-serif;margin-top:4px;min-height:16px}
 </style>
 </head>
 <body>
@@ -24,10 +26,11 @@
   <div class="panel">
     <h1>Choose your heroes</h1>
     <label for="knightInput">Knight's name</label>
-    <input id="knightInput" type="text" maxlength="14" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" name="x_knight" inputmode="text">
+    <input id="knightInput" type="text" maxlength="14" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" name="x_knight" inputmode="text" readonly>
     <label for="princessInput">Princess's name</label>
-    <input id="princessInput" type="text" maxlength="14" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" name="x_princess" inputmode="text">
-    <button id="nameGo">Continue</button>
+    <input id="princessInput" type="text" maxlength="14" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" name="x_princess" inputmode="text" readonly>
+    <div class="msg" id="nameMsg"></div>
+    <button id="nameGo" disabled>Continue</button>
   </div>
 </div>
 <script>
@@ -181,6 +184,19 @@ const overlay=document.getElementById('nameOverlay');
 const knightInput=document.getElementById('knightInput');
 const princessInput=document.getElementById('princessInput');
 const nameGo=document.getElementById('nameGo');
+const msg=document.getElementById('nameMsg');
+let userTyped=false;
+function validateNames(){
+  const k = sanitizeName(knightInput.value);
+  const p = sanitizeName(princessInput.value);
+  const ok = k.length>0 && p.length>0 && userTyped;
+  nameGo.disabled = !ok;
+  msg.textContent = ok ? '' : 'Enter both names to continue';
+}
+['input','change','keydown','paste'].forEach(ev=>{
+  knightInput.addEventListener(ev,()=>{ userTyped=true; validateNames(); });
+  princessInput.addEventListener(ev,()=>{ userTyped=true; validateNames(); });
+});
 function buildStory(){
   return [
     'Under the Strawberry Moon, the kingdom of Verdancia fell into a sugary hush.',
@@ -192,11 +208,22 @@ function buildStory(){
 }
 let storyLines=buildStory();
 let storyIndex=0; let hasSeenPrologue=false;
-function showNameOverlay(){ overlay.style.display='grid'; setTimeout(()=>knightInput.focus(), 50); }
+function showNameOverlay(){
+  overlay.style.display='grid';
+  userTyped=false; msg.textContent='';
+  knightInput.value=''; princessInput.value='';
+  knightInput.readOnly=true; princessInput.readOnly=true;
+  knightInput.addEventListener('focus',()=>{ knightInput.readOnly=false; },{once:true});
+  princessInput.addEventListener('focus',()=>{ princessInput.readOnly=false; },{once:true});
+  nameGo.disabled=true;
+  setTimeout(()=>knightInput.focus(), 50);
+}
 function hideNameOverlay(){ overlay.style.display='none'; }
 nameGo.addEventListener('click',()=>{
-  knightName=sanitizeName(knightInput.value)||'Shekky';
-  princessName=sanitizeName(princessInput.value)||'Yasmen';
+  const k=sanitizeName(knightInput.value);
+  const p=sanitizeName(princessInput.value);
+  if(!(k && p)) { validateNames(); return; }
+  knightName=k; princessName=p;
   storyLines=buildStory();
   hideNameOverlay();
   if(!hasSeenPrologue){ storyIndex=0; state='story'; } else { state='playing'; }

@@ -7,10 +7,29 @@
 <style>
   html,body{margin:0;height:100%;background:#b3ecff;overflow:hidden}
   canvas{display:block;width:100vw;height:100vh;image-rendering:pixelated;touch-action:none}
+  /* Name overlay */
+  #nameOverlay{position:fixed;inset:0;display:none;place-items:center;background:rgba(0,0,0,.35);z-index:5}
+  #nameOverlay .panel{background:#fff;border-radius:12px;width:min(92vw,420px);padding:16px 18px;box-shadow:0 10px 30px rgba(0,0,0,.25);display:flex;flex-direction:column;gap:10px;}
+  #nameOverlay h1{margin:6px 0 12px;color:#e11d48;font:700 20px system-ui,sans-serif}
+  #nameOverlay label{display:block;font:600 14px system-ui,sans-serif;margin:8px 0 4px;color:#334155}
+  #nameOverlay input{width:100%;padding:10px 12px;font:600 16px system-ui,sans-serif;border:2px solid #fbcfe8;border-radius:10px;outline:none;box-sizing:border-box}#nameOverlay input:focus{border-color:#e11d48}#nameOverlay *{box-sizing:border-box}
+  #nameOverlay input:focus{border-color:#e11d48}
+  #nameOverlay button{margin-top:14px;width:100%;padding:10px 12px;background:#e11d48;color:#fff;border:none;border-radius:10px;font:700 16px system-ui,sans-serif}
 </style>
 </head>
 <body>
 <canvas id="screen"></canvas>
+<!-- Name input overlay -->
+<div id="nameOverlay">
+  <div class="panel">
+    <h1>Choose your heroes</h1>
+    <label for="knightInput">Knight's name</label>
+    <input id="knightInput" type="text" maxlength="14" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" name="x_knight" inputmode="text">
+    <label for="princessInput">Princess's name</label>
+    <input id="princessInput" type="text" maxlength="14" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" name="x_princess" inputmode="text">
+    <button id="nameGo">Continue</button>
+  </div>
+</div>
 <script>
 (()=>{
 /* =========================
@@ -154,16 +173,34 @@ level[PRINCESS_TILE[1]][PRINCESS_TILE[0]]=T_PRINCESS;
 addRect(WORLD_W-10,WORLD_H-8,8,1,T_SOLID);
 
 /* =========================
-   Story
+   Story & Name Entry
 ========================= */
-const storyLines=[
-  'Under the Strawberry Moon, the kingdom of Verdancia fell into a sugary hush.',
-  'Princess Yasmen was bound by a sweet curse — only courage and wild strawberries can break it.',
-  'Sir Shekky, the berry-bright knight, rides out: gather 10 strawberries and cross the spiked fields.',
-  'Beware slimes. Touch flags to save progress. Hearts grant +1 life. Rescue Yasmen no matter your haul.',
-  'For Verdancia! (Tap to begin)'
-];
+let knightName='Shekky', princessName='Yasmen';
+const sanitizeName=s=>s.replace(/[^A-Za-z0-9 _-]/g,'').trim().slice(0,14);
+const overlay=document.getElementById('nameOverlay');
+const knightInput=document.getElementById('knightInput');
+const princessInput=document.getElementById('princessInput');
+const nameGo=document.getElementById('nameGo');
+function buildStory(){
+  return [
+    'Under the Strawberry Moon, the kingdom of Verdancia fell into a sugary hush.',
+    `Princess ${princessName} was bound by a sweet curse — only courage and wild strawberries can break it.`,
+    `Sir ${knightName}, the berry-bright knight, rides out: gather 10 strawberries and cross the spiked fields.`,
+    'Beware slimes. Touch flags to save progress. Hearts grant +1 life. Rescue the princess no matter your haul.',
+    'For Verdancia! (Tap to begin)'
+  ];
+}
+let storyLines=buildStory();
 let storyIndex=0; let hasSeenPrologue=false;
+function showNameOverlay(){ overlay.style.display='grid'; setTimeout(()=>knightInput.focus(), 50); }
+function hideNameOverlay(){ overlay.style.display='none'; }
+nameGo.addEventListener('click',()=>{
+  knightName=sanitizeName(knightInput.value)||'Shekky';
+  princessName=sanitizeName(princessInput.value)||'Yasmen';
+  storyLines=buildStory();
+  hideNameOverlay();
+  if(!hasSeenPrologue){ storyIndex=0; state='story'; } else { state='playing'; }
+});
 
 /* =========================
    Entities
@@ -209,7 +246,7 @@ function harm(){
   player.lives--; player.inv=60;
   spawnBurst(player.x+player.w/2, player.y+player.h/2, '#f87171', 16);
   if(player.lives<=0){ state='end-lose'; }
-  else { player.x=player.spawnX; player.y=player.spawnY; player.vx=0; player.vy=0; player.onGround=false; }
+  else { player.x=player.spawnX; player.y=player.spawnY; player.vx=player.vy=0; player.onGround=false; }
 }
 
 /* =========================
@@ -230,7 +267,7 @@ const touch = { left:false, right:false, jumpPressed:false };
 screen.addEventListener('pointerdown',e=>{
   const r=screen.getBoundingClientRect();
   const cx=(e.clientX - r.left)/r.width; // 0..1
-  if(state==='start' || state==='story'){ /* handled by state machine */ }
+  if(state==='start' || state==='story' || state==='name'){ /* handled by state machine */ }
   else {
     if(cx<0.33){ touch.left=true; touch.right=false; }
     else if(cx<0.66){ touch.right=true; touch.left=false; }
@@ -244,14 +281,14 @@ screen.addEventListener('pointerup',e=>{ touch.left=false; touch.right=false; })
    Game State
 ========================= */
 let t=0;
-let state='start'; // start, story, playing, end-win, end-lose
+let state='start'; // start, name, story, playing, end-win, end-lose
 let coyote=0, jumpBuf=0, jumpHeld=false; // forgiveness & input edge
 
 /* =========================
    Update
 ========================= */
 function update(){
-  if(state==='start' || state==='story' || state==='end-win' || state==='end-lose') return;
+  if(state==='start' || state==='story' || state==='name' || state==='end-win' || state==='end-lose') return;
 
   t++;
 
@@ -443,13 +480,13 @@ function drawEnd(win){
   if(win){
     let msg='';
     if(player.berries >= BERRY_GOAL){
-      msg = `Yasmen: "Shekky! You found all ${player.berries} strawberries — the sweetest hero!"`;
+      msg = `${princessName}: "${knightName}! You found all ${player.berries} strawberries — the sweetest hero!"`;
     } else if(player.berries >= Math.ceil(BERRY_GOAL/2)){
-      msg = `Yasmen: "You brought ${player.berries} strawberries — just enough to break the spell!"`;
+      msg = `${princessName}: "You brought ${player.berries} strawberries — just enough to break the spell!"`;
     } else if(player.berries > 0){
-      msg = `Yasmen: "Only ${player.berries}? Your courage mattered more than berries. Let's go home!"`;
+      msg = `${princessName}: "Only ${player.berries}? Your courage mattered more than berries. Let's go home!"`;
     } else {
-      msg = `Yasmen: "No strawberries… but your heart is sweeter than any jam. You still saved me!"`;
+      msg = `${princessName}: "No strawberries… but your heart is sweeter than any jam. You still saved me!"`;
     }
     wrapText(msg, 52, 120, W-104, 18);
   } else {
@@ -499,7 +536,9 @@ function pointerToViewXY(e){
 screen.addEventListener('pointerdown', e=>{
   const p=pointerToViewXY(e);
   if(state==='start'){
-    if(!hasSeenPrologue){ state='story'; storyIndex=0; } else { state='playing'; }
+    // open name input before first run (and on following runs for rename)
+    showNameOverlay();
+    state='name';
   } else if(state==='story'){
     if(storyIndex < storyLines.length-1) storyIndex++; else { hasSeenPrologue=true; state='playing'; }
   } else if(state==='end-win' || state==='end-lose'){

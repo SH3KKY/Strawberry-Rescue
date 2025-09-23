@@ -25,7 +25,7 @@ Designed to be lightweight, responsive, and mobile-friendly (tap controls includ
 - **Jump**: `W` / `↑` / `Space`  
 - **Click** to advance dialogs / restart  
 
-### Mobile
+### Mobile (Needs improvement)
 - **Tap left third** = move left  
 - **Tap middle third** = move right  
 - **Tap right third** = jump  

@@ -2,7 +2,7 @@
 
 A tiny browser platformer built with **vanilla JavaScript** and an **HTML5 Canvas** — no engines, no frameworks.  
 Collect strawberries, dodge spikes and slimes, hit checkpoint flags, and rescue the princess.  
-Designed to be lightweight, responsive, and mobile-friendly (tap controls included).
+Designed to be lightweight, responsive, and mobile-friendly (WIP).
 
 ---
 
